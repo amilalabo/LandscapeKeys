@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="description" content="スマホ横画面・PC対応の36鍵シンセ。パイプオルガン、ピアノ、8bit音色、FMシンセを搭載">
+  <title>Landscape Keys | 横画面ピアノ・8bit・FMシンセ</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+      --bg: #0b1220;
+      --panel: #142136;
+      --panel-edge: #2b3c54;
+      --muted: #94a6bf;
+      --text: #eff5ff;
+      --accent: #66dcc5;
+      --key-count: 21;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+    body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+    button, select, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .app {
+      width: 100%; height: 100vh; height: 100dvh;
+      padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(9px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+      display: flex; flex-direction: column; gap: clamp(6px, 1.3vh, 13px);
+      background: radial-gradient(ellipse 60% 45% at 50% 120%, #193650 0%, transparent 100%), #0b1220;
+    }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 37px; flex-shrink: 0; }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .logo { display: grid; grid-template-columns: repeat(4, 5px); align-items: end; gap: 3px; height: 25px; padding: 5px 7px; border: 1px solid #436478; border-radius: 9px; background: #1d3248; }
+    .logo i { display: block; border-radius: 3px; background: #66dcc5; }
+    .logo i:nth-child(1) { height: 10px; } .logo i:nth-child(2) { height: 17px; }
+    .logo i:nth-child(3) { height: 13px; } .logo i:nth-child(4) { height: 19px; }
+    .name { font-size: clamp(15px, 2.6vw, 22px); letter-spacing: .045em; font-weight: 800; white-space: nowrap; }
+    .tag { font-size: 10px; color: #98b2c9; font-weight: 650; letter-spacing: .18em; margin-left: 4px; vertical-align: 2px; }
+    .status { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: clamp(10px, 1.45vw, 12px); white-space: nowrap; }
+    .dot { width: 8px; height: 8px; display: inline-block; border-radius: 50%; background: #60718c; box-shadow: 0 0 0 4px rgba(96,113,140,.13); }
+    .status.ready .dot { background: #66dcc5; box-shadow: 0 0 0 4px rgba(102,220,197,.12); }
+    .toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: clamp(6px, 1vw, 14px); padding: 8px 10px; min-height: 54px; background: rgba(22, 36, 55, .9); border: 1px solid #263952; border-radius: 12px; flex-shrink: 0; }
+    .control-label { text-transform: uppercase; font-size: 10px; color: #91a5bf; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
+    .octaves { display: flex; align-items: center; gap: 7px; }
+    .range-label { white-space: nowrap; color: white; font-size: 12px; font-weight: 750; text-align: center; min-width: 64px; font-variant-numeric: tabular-nums; }
+    .control-button, .sustain { border: 1px solid #3c526e; color: #f4f7ff; background: #21334b; border-radius: 8px; min-width: 32px; height: 32px; padding: 0 9px; font-weight: 700; transition: background .12s ease, transform .08s ease; }
+    .control-button:active, .sustain:active { transform: scale(.96); }
+    .control-button:disabled { opacity: .35; cursor: not-allowed; }
+    .tone-control, .volume-control { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .organ-import { font-size: 11px; padding: 0 7px; min-width: 61px; white-space: nowrap; }
+    .organ-import.is-loaded { border-color: #3e987d; color: #a4f4e2; }
+    .tone-control select { background: #21334b; color: white; border: 1px solid #3c526e; border-radius: 8px; height: 32px; padding: 0 6px; font-size: 12px; max-width: 132px; }
+    .sustain { font-size: 12px; white-space: nowrap; }
+    .sustain[aria-pressed="true"] { background: #155d58; border-color: #49baa7; color: #ccfff1; }
+    .volume-control { margin-left: auto; }
+    input[type="range"] { accent-color: var(--accent); width: clamp(76px, 10vw, 125px); cursor: pointer; }
+    .volume-value { width: 35px; font-size: 11px; font-variant-numeric: tabular-nums; color: #c1d0e0; }
+    .fullscreen, .pc-enable { white-space: nowrap; font-size: 12px; }
+    .pc-enable { border-color: #3e987d; background: #1b514a; }
+    .keyboard-shell:focus { outline: none; }
+    .credit { font-size: 10px; color: #8ea6bb; white-space: nowrap; text-decoration: underline; text-underline-offset: 2px; }
+    @media (max-width: 720px) { .credit { display: none; } }
+    .keyboard-stage { display: flex; flex: 1 1 auto; min-height: 0; justify-content: center; align-items: stretch; padding: 6px 0 4px; }
+    .keyboard-shell { position: relative; width: 100%; max-width: 1580px; height: 100%; min-height: 0; border: 7px solid #202b3e; border-top: 14px solid #27354a; border-radius: 13px 13px 16px 16px; box-shadow: 0 5px 0 #050a12, 0 16px 35px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.04); background: #090d13; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+    .white-row { display: flex; width: 100%; height: 100%; }
+    .piano-key { appearance: none; -webkit-appearance: none; outline-offset: -5px; touch-action: none; user-select: none; -webkit-user-select: none; position: relative; text-align: center; padding: 0; border: 0; }
+    .white { flex: 1; min-width: 0; z-index: 1; border-left: 1px solid #aeb7c3; border-right: 1px solid #d7dce3; border-bottom: 7px solid #b6c0cc; border-radius: 0 0 6px 6px; background: linear-gradient(90deg, #d7e0eb 0%, #ffffff 8%, #ffffff 85%, #dce4ec 100%); color: #506178; box-shadow: inset 0 -6px 10px rgba(100,116,139,.12); }
+    .white:first-child { border-left: none; }
+    .white:active, .white.is-pressed { background: linear-gradient(180deg, #c1f5e9, #d7fff3 65%, #a1dbd1 100%); border-bottom-width: 3px; box-shadow: inset 0 8px 18px rgba(21,138,120,.2); }
+    .black { position: absolute; z-index: 2; top: 0; height: 61%; width: calc(100% / var(--key-count) * .62); transform: translateX(-50%); border: 1px solid #070d17; border-bottom: 8px solid #080d16; border-radius: 0 0 5px 5px; background: linear-gradient(90deg, #0b1322 0%, #293a50 17%, #172436 70%, #090e18 100%); color: #c2d2e2; box-shadow: 3px 5px 7px rgba(0,0,0,.37), inset 0 -8px 7px rgba(0,0,0,.4); }
+    .black:active, .black.is-pressed { background: linear-gradient(180deg, #285f64, #20857a); border-bottom-width: 4px; box-shadow: 2px 2px 4px rgba(0,0,0,.35); }
+    .key-label { pointer-events: none; position: absolute; inset-inline: 0; bottom: max(12px, 5%); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: clamp(2px, 1vh, 7px); }
+    .key-note { font-size: clamp(10px, 1.35vw, 15px); font-weight: 800; letter-spacing: -.03em; }
+    .key-jp { font-size: clamp(10px, 1.6vw, 17px); font-weight: 500; color: #6a7c90; }
+    .key-pc { font-size: clamp(9px, 1.1vw, 11px); font-weight: 800; color: #8ca0b9; background: #e7ecf3; border: 1px solid #cbd4df; min-width: 18px; border-radius: 4px; padding: 1px 3px; }
+    .black .key-label { bottom: 10px; gap: 5px; }
+    .black .key-note { font-size: clamp(9px, 1vw, 12px); }
+    .black .key-pc { background: #36495e; color: #d5e2ef; border-color: #465e77; }
+    .white.is-pressed .key-pc { background: #b2e9dc; color: #296053; }
+    /* On compact landscape phones, keep C labels visible without crowding narrow keys. */
+    @media (max-width: 920px) and (pointer: coarse) {
+      .piano-key .key-pc, .piano-key .key-jp { display: none; }
+      .piano-key:not(.octave-c) .key-note { display: none; }
+      .black .key-label { display: none; }
+      .white.octave-c .key-note { font-size: clamp(10px, 1.45vw, 14px); }
+    }
+    .footer { min-height: 19px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 8px; color: #859ab5; font-size: clamp(10px, 1.5vw, 12px); }
+    .footer p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notes-playing { white-space: nowrap; color: #70d8c9; font-variant-numeric: tabular-nums; }
+    .rotate-overlay { display: none; position: fixed; inset: 0; z-index: 10; background: #0b1220; color: #f2f6ff; flex-direction: column; justify-content: center; align-items: center; gap: 12px; padding: 35px; text-align: center; }
+    .rotate-icon { font-size: 56px; line-height: 1; transform: rotate(90deg); }
+    .rotate-overlay strong { font-size: 19px; }
+    .rotate-overlay span { color: #a6bad1; font-size: 13px; }
+    @media (orientation: portrait) and (max-width: 700px) and (pointer: coarse) { .rotate-overlay { display: flex; } }
+    @media (max-width: 760px) {
+      .app { gap: 5px; }
+      .header { min-height: 28px; }
+      .brand { gap: 6px; }
+      .tag { font-size: 8px; }
+      .toolbar { padding: 5px 6px; min-height: 42px; gap: 6px; border-radius: 9px; }
+      .control-label { font-size: 9px; }
+      .control-button, .sustain { min-width: 28px; height: 30px; padding: 0 6px; }
+      .octaves { gap: 4px; }
+      .range-label { min-width: 56px; font-size: 11px; }
+      .tone-control, .volume-control { gap: 4px; }
+      .tone-control select { max-width: 115px; font-size: 11px; height: 30px; padding: 0 3px; }
+      .organ-import { min-width: 32px; padding: 0 3px; font-size: 9px; }
+      .volume-value { display: none; }
+      .fullscreen .full-label, .pc-enable .full-label { display: none; }
+      .keyboard-shell { border: 5px solid #202b3e; border-top-width: 10px; }
+      .key-jp { display: none; }
+      .key-label { gap: 3px; }
+      .footer { min-height: 14px; }
+    }
+    @media (max-height: 390px) {
+      .app { gap: 4px; }
+      .header { min-height: 26px; }
+      .toolbar { padding-block: 4px; min-height: 38px; }
+      .pc-enable { min-width:28px; }
+      .keyboard-stage { padding-top: 2px; padding-bottom: 1px; }
+      .key-label { bottom: 8px; }
+      .key-jp { display: none; }
+    }
+    @media (max-width: 570px) and (orientation: landscape) {
+      .tag { display: none; }
+      .control-label { display: none; }
+      .tone-control select { max-width: 104px; }
+      .organ-import { min-width: 30px; }
+      input[type="range"] { width: 66px; }
+      .footer p { font-size: 10px; }
+      .pc-enable { padding-inline:5px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="ブラウザピアノ">
+    <header class="header">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="name">LANDSCAPE KEYS <span class="tag">PLAY ANYWHERE</span></span>
+      </div>
+      <span id="audio-status" class="status" role="status"><i class="dot" aria-hidden="true"></i><span id="status-text">鍵盤を押して音を有効化</span></span>
+    </header>
+
+    <section class="toolbar" aria-label="ピアノ設定">
+      <div class="octaves" aria-label="音域">
+        <span class="control-label">音域</span>
+        <button id="oct-down" class="control-button" title="1オクターブ下げる" aria-label="音域を1オクターブ下げる">−</button>
+        <span id="range-label" class="range-label">C4 – B6</span>
+        <button id="oct-up" class="control-button" title="1オクターブ上げる" aria-label="音域を1オクターブ上げる">＋</button>
+      </div>
+      <label class="tone-control">
+        <span class="control-label">音色</span>
+        <select id="tone-select" aria-label="音色を選択">
+          <option value="organ" selected>パイプオルガン</option>
+          <option value="grand">グランドピアノ（録音）</option>
+          <option value="piano">ピアノ（電子音）</option>
+          <option value="chip-pulse">8bit（矩形波）</option>
+          <option value="chip-triangle">8bit（三角波）</option>
+          <option value="fm">FMシンセ</option>
+        </select>
+        <button id="organ-import" type="button" class="control-button organ-import" title="FreePatsのSF2音源を選択">SF2読込</button>
+        <input id="organ-file" type="file" accept=".sf2,audio/x-soundfont,application/octet-stream" hidden>
+      </label>
+      <button id="sustain" class="sustain" type="button" aria-pressed="false" title="サステインをオン・オフ">余韻 OFF</button>
+      <label class="volume-control">
+        <span class="control-label">音量</span>
+        <input id="volume" type="range" min="0" max="100" value="65" aria-label="音量">
+        <span id="volume-value" class="volume-value">65%</span>
+      </label>
+      <button id="pc-enable" class="control-button pc-enable" type="button" title="PCの鍵盤操作を有効にする">⌨ <span class="full-label">PC演奏</span></button>
+      <button id="fullscreen" class="control-button fullscreen" type="button" title="全画面表示" aria-label="全画面表示">⛶ <span class="full-label">全画面</span></button>
+    </section>
+
+    <section class="keyboard-stage" aria-label="3オクターブ鍵盤">
+      <div class="keyboard-shell" id="keyboard" tabindex="-1" role="group" aria-label="音を鳴らす鍵盤">
+        <div class="white-row" id="white-row"></div>
+        <div id="black-row"></div>
+      </div>
+    </section>
+    <footer class="footer">
+      <p id="sample-status">FreePatsパイプオルガン：音源確認中...</p>
+      <a id="source-credit" class="credit" href="https://freepats.zenvoid.org/Organ/pipe-organ.html" target="_blank" rel="noopener" title="FreePats Church Organ Emulation / CC0 1.0">音源 FreePats / CC0 1.0</a>
+      <span class="notes-playing" id="playing-count" aria-live="off">演奏中 0 音</span>
+    </footer>
+  </main>
+  <aside class="rotate-overlay" aria-label="横画面の案内">
+    <div class="rotate-icon" aria-hidden="true">▯</div>
+    <strong>スマホを横向きにしてください</strong>
+    <span>横画面で鍵盤を大きく表示します</span>
+  </aside>
+
+  <script>
+    'use strict';
+    const OCTAVES = 3;
+    const NOTE_COUNT = 12 * OCTAVES;
+    const WHITE_KEY_COUNT = 7 * OCTAVES;
+    const SEMITONES = Array.from({ length: NOTE_COUNT }, (_, i) => i);
+    const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+    const JP_NAMES = ['ド', '', 'レ', '', 'ミ', 'ファ', '', 'ソ', '', 'ラ', '', 'シ'];
+    const WHITE_STEPS = [0, 2, 4, 5, 7, 9, 11];
+    const BLACK_STEPS = [1, 3, 6, 8, 10];
+    const WHITE_BEFORE = { 1: 0, 3: 1, 6: 3, 8: 4, 10: 5 };
+    const COMPUTER_CODES = [
+      'KeyZ', 'KeyS', 'KeyX', 'KeyD', 'KeyC', 'KeyV', 'KeyG', 'KeyB', 'KeyH', 'KeyN', 'KeyJ', 'KeyM',
+      'KeyQ', 'Digit2', 'KeyW', 'Digit3', 'KeyE', 'KeyR', 'Digit5', 'KeyT', 'Digit6', 'KeyY', 'Digit7', 'KeyU',
+      'KeyI', 'Digit9', 'KeyO', 'Digit0', 'KeyP', 'BracketLeft', 'Equal', 'BracketRight', 'Backslash', 'Semicolon', 'Quote', 'Enter'
+    ];
+    const COMPUTER_LABELS = ['Z', 'S', 'X', 'D', 'C', 'V', 'G', 'B', 'H', 'N', 'J', 'M', 'Q', '2', 'W', '3', 'E', 'R', '5', 'T', '6', 'Y', '7', 'U', 'I', '9', 'O', '0', 'P', '[', '=', ']', '¥/\\', ';', '\'', '↵'];
+    const CODE_TO_INDEX = new Map(COMPUTER_CODES.map((code, index) => [code, index]));
+    const keyboard = document.getElementById('keyboard');
+    const whiteRow = document.getElementById('white-row');
+    const blackRow = document.getElementById('black-row');
+    const status = document.getElementById('audio-status');
+    const statusText = document.getElementById('status-text');
+    const playingCount = document.getElementById('playing-count');
+    const rangeLabel = document.getElementById('range-label');
+    const sustainButton = document.getElementById('sustain');
+    const volumeSlider = document.getElementById('volume');
+    const toneSelector = document.getElementById('tone-select');
+    const sampleStatus = document.getElementById('sample-status');
+    const organImport = document.getElementById('organ-import');
+    const organFile = document.getElementById('organ-file');
+    const sourceCredit = document.getElementById('source-credit');
+
+    // This sampler plays the FreePats Church Organ Emulation *SF2* soundbank.
+    // Put FreePats-PipeOrgan.sf2 beside index.html when hosting, or load an .sf2
+    // manually using the SF2 button. No external JS library is required.
+    let organBank = null;
+    let organLoadMessage = '音源を確認中';
+    let organLoading = false;
+    let octaveOffset = 0;
+    let sustainEnabled = false;
+    let audioContext = null;
+    let masterGain = null;
+    let voiceSerial = 0;
+    const voices = new Map();
+    const holders = new Map();
+    const heldPointers = new Map();
+    const heldKeyboard = new Map();
+    const sustained = new Set();
+    const keyElements = new Map();
+    // Tone.js-hosted Salamander Grand Piano V3, © Alexander Holm, CC BY 3.0.
+    // Loading samples requires internet access; the oscillator synth works offline.
+    const SAMPLE_BASE_URL = 'https://tonejs.github.io/audio/salamander/';
+    const SAMPLE_SOURCES = [];
+    for (let octave = 1; octave <= 7; octave++) {
+      if (octave > 0) SAMPLE_SOURCES.push({ midi: 21 + 12 * octave, file: `A${octave}.mp3` });
+      SAMPLE_SOURCES.push({ midi: 12 + octave * 12, file: `C${octave}.mp3` });
+      SAMPLE_SOURCES.push({ midi: 15 + octave * 12, file: `Ds${octave}.mp3` });
+      SAMPLE_SOURCES.push({ midi: 18 + octave * 12, file: `Fs${octave}.mp3` });
+    }
+    SAMPLE_SOURCES.push({ midi: 21, file: 'A0.mp3' }, { midi: 108, file: 'C8.mp3' });
+    SAMPLE_SOURCES.sort((a, b) => a.midi - b.midi);
+    const sampleBuffers = new Map();
+    const sampleJobs = new Map();
+    // Minimal SoundFont 2.0 parser supporting melodic presets, instruments,
+    // key ranges, root tuning, sample loops, and stereo/stacked sample zones.
+    function parseSoundFont(arrayBuffer) {
+      const data = new DataView(arrayBuffer);
+      const length = data.byteLength;
+      function idAt(off, len = 4) {
+        let result = '';
+        for (let i=0; i<len; i++) result += String.fromCharCode(data.getUint8(off+i));
+        return result;
+      }
+      if (length < 128 || idAt(0) !== 'RIFF' || idAt(8) !== 'sfbk') throw Error('SF2ファイルではありません');
+      const chunks = {};
+      function scan(start, end, callback) {
+        let p = start;
+        while (p + 8 <= end && p + 8 <= length) {
+          const name = idAt(p), size = data.getUint32(p+4, true), startData = p+8;
+          const next = startData + size;
+          if (next > length || next > end) throw Error('SF2データが途中で切れています');
+          callback(name, startData, size);
+          p = next + (size & 1);
+        }
+      }
+      const riffEnd = Math.min(length, 8 + data.getUint32(4,true));
+      scan(12, riffEnd, (name, offset, size) => {
+        if (name !== 'LIST' || size < 4) return;
+        const type = idAt(offset);
+        if (type !== 'pdta' && type !== 'sdta') return;
+        scan(offset+4, offset+size, (part, content, count) => { chunks[part] = {offset:content, size:count}; });
+      });
+      for (const part of ['smpl','phdr','pbag','pgen','inst','ibag','igen','shdr']) {
+        if (!chunks[part]) throw Error('SF2内の' + part + 'が見つかりません');
+      }
+      const sampleData = chunks.smpl;
+      const availableSamples = Math.floor(sampleData.size / 2);
+      function gen(opChunk, begin, end) {
+        const chunk = chunks[opChunk];
+        const list = [];
+        for (let n = begin; n < end; n++) {
+          const p = chunk.offset + n*4;
+          if (p + 4 > chunk.offset + chunk.size) break;
+          list.push({ op:data.getUint16(p,true), value:data.getUint16(p+2,true), signed:data.getInt16(p+2,true) });
+        }
+        return list;
+      }
+      function bagIndex(chunkName, bagNo) {
+        const chunk = chunks[chunkName];
+        const p = chunk.offset + bagNo*4;
+        if (p + 4 > chunk.offset + chunk.size) throw Error('SF2のbagが不正です');
+        return data.getUint16(p,true);
+      }
+      function gensForZone(bagChunk, genChunk, bagNo) {
+        return gen(genChunk,bagIndex(bagChunk,bagNo),bagIndex(bagChunk,bagNo+1));
+      }
+      function values(list) {
+        const result = {};
+        for (const g of list) result[g.op] = g;
+        return result;
+      }
+      function inRange(v,midi) { return !v || (midi >= (v.value & 255) && midi <= (v.value >> 8)); }
+      function intersection(a,b) {
+        if (!a) return b;
+        if (!b) return a;
+        const low = Math.max(a.value & 255,b.value & 255);
+        const high = Math.min(a.value >> 8,b.value >> 8);
+        return { value: low | (high << 8) };
+      }
+      function plus(a,b) { return (a?.signed || 0) + (b?.signed || 0); }
+      const sampleHeaders = [];
+      for(let p=chunks.shdr.offset; p+46<=chunks.shdr.offset+chunks.shdr.size; p+=46) {
+        sampleHeaders.push({
+          name:idAt(p,20).split('\0')[0],
+          start:data.getUint32(p+20,true), end:data.getUint32(p+24,true),
+          loopStart:data.getUint32(p+28,true), loopEnd:data.getUint32(p+32,true),
+          sampleRate:data.getUint32(p+36,true), originalPitch:data.getUint8(p+40),
+          correction:data.getInt8(p+41), sampleType:data.getUint16(p+44,true)
+        });
+      }
+      const pcount = chunks.phdr.size / 38;
+      if (pcount < 2) throw Error('SF2に音色がありません');
+      const presetStart = chunks.phdr.offset;
+      const presetBagStart = data.getUint16(presetStart+24,true);
+      const presetBagEnd = data.getUint16(presetStart+38+24,true);
+      const instrumentCount = chunks.inst.size / 22;
+      const regions = [];
+      let presetGlobal = {};
+      for (let b=presetBagStart; b<presetBagEnd; b++) {
+        const pvalues = values(gensForZone('pbag','pgen',b));
+        if (!pvalues[41]) { presetGlobal = {...presetGlobal,...pvalues}; continue; }
+        const inst = pvalues[41].value;
+        if (inst >= instrumentCount-1) continue;
+        const instBagStart = data.getUint16(chunks.inst.offset+inst*22+20,true);
+        const instBagEnd = data.getUint16(chunks.inst.offset+(inst+1)*22+20,true);
+        let instrGlobal = {};
+        for (let ib=instBagStart; ib<instBagEnd; ib++) {
+          const ivalues = values(gensForZone('ibag','igen',ib));
+          if (!ivalues[53]) { instrGlobal = {...instrGlobal,...ivalues}; continue; }
+          const sampleId = ivalues[53].value;
+          if (sampleId >= sampleHeaders.length-1) continue;
+          const keyRange = intersection(intersection(presetGlobal[43],pvalues[43]),intersection(instrGlobal[43],ivalues[43]));
+          const velRange = intersection(intersection(presetGlobal[44],pvalues[44]),intersection(instrGlobal[44],ivalues[44]));
+          const instrument = {...instrGlobal,...ivalues};
+          const preset = {...presetGlobal,...pvalues};
+          const sh = sampleHeaders[sampleId];
+          if (sh.start >= sh.end || sh.end > availableSamples || sh.sampleRate < 1000 || sh.sampleRate > 192000) continue;
+          regions.push({sampleId, sh, keyRange, velRange,
+            root:instrument[58]?.value ?? sh.originalPitch,
+            coarse:plus(instrument[51],preset[51]), fine:plus(instrument[52],preset[52]),
+            attenuation:(instrument[48]?.value || 0) + (preset[48]?.value || 0),
+            mode:(instrument[54]?.value || 0)&3,
+            releaseTime:instrument[38]?.signed ?? -1600,
+          });
+        }
+      }
+      if (!regions.length) throw Error('SF2に再生可能な音がありません');
+      const decoded = new Map();
+      function getSampleBuffer(ctx,sampleId) {
+        if (decoded.has(sampleId)) return decoded.get(sampleId);
+        const sh = sampleHeaders[sampleId];
+        const count = sh.end-sh.start;
+        const buffer = ctx.createBuffer(1,count,sh.sampleRate);
+        const output=buffer.getChannelData(0);
+        let byteOffset = sampleData.offset + sh.start*2;
+        for(let i=0;i<count;i++) output[i] = data.getInt16(byteOffset+i*2,true)/32768;
+        decoded.set(sampleId,buffer);
+        return buffer;
+      }
+      return { regions, sampleHeaders, getSampleBuffer,
+        voiceRegions(midi) { return regions.filter(r => inRange(r.keyRange,midi) && inRange(r.velRange,100)); }
+      };
+    }
+
+    async function saveOrganBank(buffer) {
+      if (!('indexedDB' in window)) return;
+      try {
+        const db = await openOrganDB();
+        await new Promise((resolve,reject) => {
+          const tx=db.transaction('banks','readwrite');
+          tx.objectStore('banks').put(buffer,'freepats-pipe');
+          tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+        });
+        db.close();
+      } catch (_) { /* May be blocked in private browsing */ }
+    }
+    function openOrganDB() {
+      return new Promise((resolve,reject) => {
+        const request=indexedDB.open('landscape-keys-freepats',1);
+        request.onupgradeneeded=()=>request.result.createObjectStore('banks');
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+    }
+    async function readOrganBank() {
+      if (!('indexedDB' in window)) return null;
+      try {
+        const db=await openOrganDB();
+        const result=await new Promise((resolve,reject) => {
+          const tx=db.transaction('banks','readonly');
+          const request=tx.objectStore('banks').get('freepats-pipe');
+          request.onsuccess=()=>resolve(request.result||null);
+          request.onerror=()=>reject(request.error);
+        });
+        db.close();
+        return result;
+      } catch (_) {return null;}
+    }
+    function updateOrganStatus() {
+      if (organBank) {
+        organImport.textContent='SF2変更';
+        organImport.classList.add('is-loaded');
+      } else {
+        organImport.textContent='SF2読込';
+        organImport.classList.remove('is-loaded');
+      }
+    }
+    async function installOrganBuffer(buffer, persist = false) {
+      const parsed = parseSoundFont(buffer);
+      organBank=parsed;
+      organLoadMessage='FreePatsオルガン：SF2準備完了（' + parsed.regions.length + '音域）';
+      updateOrganStatus();
+      setSampleStatus();
+      if (persist) saveOrganBank(buffer);
+    }
+    async function prepareOrganAuto() {
+      if (organLoading || organBank) return;
+      organLoading=true;
+      organLoadMessage='FreePatsオルガン：音源を確認中...';
+      setSampleStatus();
+      try {
+        const saved=await readOrganBank();
+        if (saved) {
+          try { await installOrganBuffer(saved); return; } catch (_) { /* Fall through */ }
+        }
+        if (organBank) return;
+        // Same-directory file is recommended for GitHub Pages distribution.
+        // Browser fetch is generally blocked for local file:// paths.
+        if (location.protocol === 'http:' || location.protocol === 'https:') {
+          const url=new URL('FreePats-PipeOrgan.sf2',document.baseURI);
+          const response=await fetch(url, {cache:'force-cache'});
+          if (response.ok) {
+            const buffer=await response.arrayBuffer();
+            await installOrganBuffer(buffer);
+            return;
+          }
+        }
+        if (!organBank) organLoadMessage='FreePats音源なし：SF2読込ボタンから追加（現在は代用音）';
+      } catch (_) {
+        if (!organBank) organLoadMessage='FreePats音源未読込：SF2ファイルを選択してください（代用音）';
+      } finally {
+        organLoading=false;
+        setSampleStatus();
+      }
+    }
+    async function importOrganFile(file) {
+      if (!file) return;
+      organLoadMessage='SF2を読み込み中：'+file.name;
+      setSampleStatus();
+      try {
+        if (!/\.sf2$/i.test(file.name)) throw Error('展開済みの .sf2 ファイルを選択してください');
+        if (file.size > 120*1024*1024) throw Error('音源ファイルが大きすぎます');
+        const buffer=await file.arrayBuffer();
+        releaseEverything();
+        await installOrganBuffer(buffer,true);
+      } catch (err) { organLoadMessage='SF2読込エラー：'+(err.message||'不明なエラー'); setSampleStatus(); }
+    }
+    organImport.addEventListener('click', () => organFile.click());
+    organFile.addEventListener('change', event => { importOrganFile(event.target.files?.[0]); organFile.value=''; });
+    document.addEventListener('dragover', event => { if ([...event.dataTransfer?.types||[]].includes('Files')) event.preventDefault(); });
+    document.addEventListener('drop', event => { if (event.dataTransfer?.files?.length) {event.preventDefault(); importOrganFile(event.dataTransfer.files[0]);} });
+    function playOrganVoice(index) {
+      if (!organBank) return false;
+      const ctx=audioContext, midi=midiFor(index), t=ctx.currentTime;
+      const matches=organBank.voiceRegions(midi);
+      if (!matches.length) return false;
+      const gain=ctx.createGain();
+      gain.gain.setValueAtTime(0.00001,t);
+      gain.gain.linearRampToValueAtTime(0.67,t+0.025);
+      gain.connect(masterGain);
+      const oscillators=[];
+      const count=Math.min(6,matches.length);
+      for(const region of matches.slice(0,count)) {
+        const sh=region.sh;
+        const source=ctx.createBufferSource();
+        source.buffer=organBank.getSampleBuffer(ctx,region.sampleId);
+        source.playbackRate.value=Math.pow(2,(midi-region.root+region.coarse+region.fine/100-sh.correction/100)/12);
+        if ((region.mode === 1 || region.mode === 3) && sh.loopEnd-sh.loopStart > 16 && sh.loopStart >= sh.start && sh.loopEnd <= sh.end) {
+          source.loop=true;
+          source.loopStart=(sh.loopStart-sh.start)/sh.sampleRate;
+          source.loopEnd=(sh.loopEnd-sh.start)/sh.sampleRate;
+        }
+        const layer=ctx.createGain();
+        layer.gain.value=0.85/Math.sqrt(count) * Math.pow(10, -region.attenuation/200);
+        source.connect(layer); layer.connect(gain);
+        source.start(t);
+        oscillators.push(source);
+      }
+      const releaseSeconds=0.16;
+      const voice={id:++voiceSerial,envelope:gain,oscillators,release:releaseSeconds,releasing:false};
+      voices.set(index,voice);
+      oscillators[0].onended=()=>{if(voices.get(index)===voice) voices.delete(index); try{gain.disconnect();}catch(_){}};
+      if(voices.size>16){const oldest=voices.entries().next().value;if(oldest&&oldest[0]!==index){releaseVoice(oldest[1],true);voices.delete(oldest[0]);}}
+      return true;
+    }
+    const sampleFailures = new Set();
+    function nearestSample(midi) {
+      return SAMPLE_SOURCES.reduce((best, entry) => Math.abs(entry.midi - midi) < Math.abs(best.midi - midi) ? entry : best, SAMPLE_SOURCES[0]);
+    }
+    function currentSources() {
+      const sources = new Map();
+      for (let index = 0; index < NOTE_COUNT; index++) {
+        const entry = nearestSample(midiFor(index));
+        sources.set(entry.midi, entry);
+      }
+      return [...sources.values()];
+    }
+    function setSampleStatus() {
+      const selected=toneSelector.value;
+      organImport.style.display = selected === 'organ' ? '' : 'none';
+      // Recordings have external credits; the built-in synthesis does not.
+      sourceCredit.style.display = (selected === 'organ' || selected === 'grand') ? '' : 'none';
+      if (selected === 'organ') {
+        sampleStatus.textContent = organLoadMessage;
+        sourceCredit.href = 'https://freepats.zenvoid.org/Organ/pipe-organ.html';
+        sourceCredit.textContent = '音源 FreePats / CC0 1.0';
+        return;
+      }
+      if (selected !== 'grand') {
+        const descriptions = {
+          piano: '電子音ピアノ',
+          'chip-pulse': '8bit矩形波：レトロゲーム風リード（ブラウザ内で合成）',
+          'chip-triangle': '8bit三角波：レトロゲーム風ベース（ブラウザ内で合成）',
+          fm: 'FMシンセ：2オペレーター周波数変調（ブラウザ内で合成）'
+        };
+        sampleStatus.textContent = descriptions[selected] || '電子シンセ';
+        return;
+      }
+      sourceCredit.href = 'https://github.com/sfzinstruments/SalamanderGrandPiano';
+      sourceCredit.textContent = '音源 © Alexander Holm / CC BY 3.0';
+      if (!audioContext) {
+        sampleStatus.textContent = '実録音ピアノ：最初の演奏時に読み込み（要ネット接続）';
+        return;
+      }
+      const sources = currentSources();
+      const loaded = sources.filter(source => sampleBuffers.has(source.midi)).length;
+      const failed = sources.filter(source => sampleFailures.has(source.midi)).length;
+      sampleStatus.textContent = loaded === sources.length
+        ? '実録音ピアノ：準備完了 ・ PCは Z〜M / Q〜U / I〜↵'
+        : failed > 0 && loaded + failed === sources.length
+          ? `実録音 ${loaded}/${sources.length} ・ 読み込めない音は電子音で代用`
+          : `実録音ピアノ：読み込み中 ${loaded}/${sources.length} ・ その間は電子音で演奏可`;
+    }
+    async function loadOneSample(source) {
+      if (sampleBuffers.has(source.midi)) return sampleBuffers.get(source.midi);
+      if (sampleJobs.has(source.midi)) return sampleJobs.get(source.midi);
+      const job = (async () => {
+        const response = await fetch(SAMPLE_BASE_URL + source.file, { mode: 'cors', cache: 'force-cache' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.arrayBuffer();
+        const buffer = await audioContext.decodeAudioData(data);
+        sampleBuffers.set(source.midi, buffer);
+        sampleFailures.delete(source.midi);
+        return buffer;
+      })().catch(() => { sampleFailures.add(source.midi); return null; })
+        .finally(() => { sampleJobs.delete(source.midi); setSampleStatus(); });
+      sampleJobs.set(source.midi, job);
+      return job;
+    }
+    function prepareSamples(forceRetry = false) {
+      if (!audioContext || toneSelector.value !== 'grand') return;
+      if (forceRetry) sampleFailures.clear();
+      for (const entry of currentSources()) {
+        if (!sampleBuffers.has(entry.midi) && !sampleJobs.has(entry.midi) && !sampleFailures.has(entry.midi)) {
+          loadOneSample(entry);
+        }
+      }
+      setSampleStatus();
+    }
+    function focusKeys() { try { keyboard.focus({ preventScroll: true }); } catch (_) { keyboard.focus(); } }
+
+
+    function midiFor(index) { return 60 + octaveOffset + SEMITONES[index]; }
+    function noteLabel(index) { const midi = midiFor(index); return NOTE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1); }
+    function noteFrequency(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+    function updateCount() { playingCount.textContent = `演奏中 ${[...holders.values()].filter(set => set.size > 0).length} 音`; }
+    function setReady() { status.classList.add('ready'); statusText.textContent = 'サウンド有効'; }
+
+    function ensureAudio() {
+      if (!audioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) { statusText.textContent = 'このブラウザでは音声非対応'; return false; }
+        try {
+          audioContext = new AudioContextClass();
+          masterGain = audioContext.createGain();
+          masterGain.gain.value = Number(volumeSlider.value) / 100 * 0.54;
+          const limiter = audioContext.createDynamicsCompressor();
+          limiter.threshold.value = -8;
+          limiter.knee.value = 10;
+          limiter.ratio.value = 5;
+          limiter.attack.value = 0.003;
+          limiter.release.value = 0.18;
+          masterGain.connect(limiter);
+          limiter.connect(audioContext.destination);
+        } catch (error) {
+          statusText.textContent = '音声の初期化に失敗しました';
+          return false;
+        }
+      }
+      if (audioContext.state !== 'running') {
+        audioContext.resume().then(setReady).catch(() => { statusText.textContent = 'タップして音声を有効化'; });
+      } else {
+        setReady();
+      }
+      prepareSamples();
+      return true;
+    }
+
+    // A single synthesized-piano timbre is retained as an offline fallback.
+    const PIANO_TIMBRE = { partials: [[1, .78], [2, .19], [3, .07]], decay: 4.0, release: .17, attack: .004, filterFactor: 10 };
+    const ORGAN_FALLBACK = { partials: [[1,.7],[2,.42],[3,.15],[4,.12],[5,.08]], decay: 0, release: .12, attack: .018, filterFactor: 16 };
+
+    // 8-bit and FM instruments are produced entirely with Web Audio, no sound files.
+    // Cache the 25% duty-cycle wave so each new note is inexpensive on mobile.
+    let pulseWave = null;
+    function getPulseWave(ctx) {
+      if (pulseWave) return pulseWave;
+      const real = new Float32Array(33);
+      const imag = new Float32Array(33);
+      for (let harmonic = 1; harmonic < real.length; harmonic++) {
+        const angle = Math.PI * 2 * harmonic * .25;
+        real[harmonic] = Math.sin(angle) / (Math.PI * harmonic);
+        imag[harmonic] = (1 - Math.cos(angle)) / (Math.PI * harmonic);
+      }
+      pulseWave = ctx.createPeriodicWave(real, imag);
+      return pulseWave;
+    }
+
+    function playChipVoice(index, triangle = false) {
+      const ctx = audioContext, now = ctx.currentTime;
+      const frequency = noteFrequency(midiFor(index));
+      const oscillator = ctx.createOscillator();
+      if (triangle) oscillator.type = 'triangle';
+      else oscillator.setPeriodicWave(getPulseWave(ctx));
+      oscillator.frequency.setValueAtTime(frequency, now);
+      const amp = ctx.createGain();
+      amp.gain.setValueAtTime(.0001, now);
+      // Very fast gated envelope, with a short release to avoid clicks.
+      amp.gain.exponentialRampToValueAtTime(triangle ? .23 : .17, now + .005);
+      oscillator.connect(amp);
+      amp.connect(masterGain);
+      const voice = { id: ++voiceSerial, envelope: amp, oscillators: [oscillator], release: .065, releasing: false };
+      voices.set(index, voice);
+      oscillator.onended = () => {
+        if (voices.get(index) === voice) voices.delete(index);
+        try { oscillator.disconnect(); amp.disconnect(); } catch (_) {}
+      };
+      oscillator.start(now);
+      limitSynthVoices(index);
+      return true;
+    }
+
+    function playFMVoice(index) {
+      const ctx = audioContext, now = ctx.currentTime;
+      const frequency = noteFrequency(midiFor(index));
+      // Real two-operator FM: a sine modulator drives the sine carrier's frequency.
+      // Modulation index decreases after the attack for a bright, slightly metallic lead.
+      const carrier = ctx.createOscillator();
+      carrier.type = 'sine';
+      carrier.frequency.setValueAtTime(frequency, now);
+      const modulator = ctx.createOscillator();
+      modulator.type = 'sine';
+      modulator.frequency.setValueAtTime(frequency * 2, now);
+      const modulation = ctx.createGain();
+      modulation.gain.setValueAtTime(frequency * 1.8, now);
+      modulation.gain.exponentialRampToValueAtTime(frequency * .28, now + .38);
+      modulator.connect(modulation);
+      modulation.connect(carrier.frequency);
+      const amp = ctx.createGain();
+      amp.gain.setValueAtTime(.0001, now);
+      amp.gain.exponentialRampToValueAtTime(.19, now + .015);
+      amp.gain.setTargetAtTime(.12, now + .06, .23);
+      carrier.connect(amp);
+      amp.connect(masterGain);
+      const voice = { id: ++voiceSerial, envelope: amp,
+        oscillators: [carrier, modulator], release: .22, releasing: false };
+      voices.set(index, voice);
+      carrier.onended = () => {
+        if (voices.get(index) === voice) voices.delete(index);
+        try { carrier.disconnect(); modulator.disconnect(); modulation.disconnect(); amp.disconnect(); } catch (_) {}
+      };
+      carrier.start(now);
+      modulator.start(now);
+      limitSynthVoices(index);
+      return true;
+    }
+
+    function releaseVoice(voice, quick = false) {
+      if (!voice || voice.releasing || !audioContext) return;
+      voice.releasing = true;
+      const t = audioContext.currentTime;
+      const release = quick ? .035 : voice.release;
+      const gain = voice.envelope.gain;
+      if (typeof gain.cancelAndHoldAtTime === 'function') {
+        gain.cancelAndHoldAtTime(t);
+      } else {
+        const value = Math.max(.0001, gain.value);
+        gain.cancelScheduledValues(t);
+        gain.setValueAtTime(value, t);
+      }
+      gain.setTargetAtTime(.00001, t, Math.max(.008, release / 5));
+      voice.oscillators.forEach(osc => { try { osc.stop(t + release + .12); } catch (_) {} });
+    }
+
+    function startVoice(index) {
+      if (!ensureAudio()) return;
+      const existing = voices.get(index);
+      if (existing) releaseVoice(existing, true);
+      sustained.delete(index);
+      const ctx = audioContext;
+      const t = ctx.currentTime;
+      const tone = toneSelector.value;
+      if (tone === 'chip-pulse' || tone === 'chip-triangle') {
+        playChipVoice(index, tone === 'chip-triangle');
+        return;
+      }
+      if (tone === 'fm') {
+        playFMVoice(index);
+        return;
+      }
+      // Pipe organ samples are the actual FreePats SF2 waveforms. If not
+      // installed, temporarily use a visibly labelled synthesis fallback.
+      if (toneSelector.value === 'organ' && playOrganVoice(index)) return;
+      // Play a real grand-piano recording when decoded; fall back to generated audio.
+      if (toneSelector.value === 'grand') {
+        const midi = midiFor(index);
+        const source = nearestSample(midi);
+        const buffer = sampleBuffers.get(source.midi);
+        if (buffer) {
+          const player = ctx.createBufferSource();
+          player.buffer = buffer;
+          player.playbackRate.value = Math.pow(2, (midi - source.midi) / 12);
+          const envelope = ctx.createGain();
+          envelope.gain.setValueAtTime(.0001, t);
+          envelope.gain.linearRampToValueAtTime(.65, t + .007);
+          player.connect(envelope);
+          envelope.connect(masterGain);
+          const voice = { id: ++voiceSerial, envelope, oscillators: [player], release: .38, releasing: false };
+          voices.set(index, voice);
+          player.onended = () => { if (voices.get(index) === voice) voices.delete(index); try { envelope.disconnect(); player.disconnect(); } catch (_) {} };
+          player.start(t);
+          return;
+        }
+      }
+      const frequency = noteFrequency(midiFor(index));
+      const timbre = toneSelector.value === 'organ' ? ORGAN_FALLBACK : PIANO_TIMBRE;
+      const envelope = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = Math.min(12500, Math.max(1500, frequency * timbre.filterFactor));
+      filter.Q.value = .35;
+      filter.connect(envelope);
+      envelope.connect(masterGain);
+      envelope.gain.setValueAtTime(.0001, t);
+      envelope.gain.exponentialRampToValueAtTime(.24, t + timbre.attack);
+      if (timbre.decay) envelope.gain.exponentialRampToValueAtTime(.0003, t + timbre.decay);
+      const oscillators = timbre.partials.map(([harmonic, level], partIndex) => {
+        const osc = ctx.createOscillator();
+        const partialGain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = frequency * harmonic;
+        osc.detune.value = partIndex === 0 ? 0 : (partIndex % 2 ? 1.3 : -1.5);
+        partialGain.gain.value = level;
+        osc.connect(partialGain);
+        partialGain.connect(filter);
+        osc.start(t);
+        if (timbre.decay) osc.stop(t + timbre.decay + 1);
+        return osc;
+      });
+      const voice = { id: ++voiceSerial, envelope, filter, oscillators, release: timbre.release, releasing: false };
+      voices.set(index, voice);
+      oscillators[0].onended = () => { if (voices.get(index) === voice) voices.delete(index); try { envelope.disconnect(); filter.disconnect(); } catch (_) {} };
+      // Cap polyphony to limit CPU usage on older mobile devices.
+      if (voices.size > 16) {
+        const oldest = voices.entries().next().value;
+        if (oldest && oldest[0] !== index) { releaseVoice(oldest[1], true); voices.delete(oldest[0]); }
+      }
+    }
+
+    function limitSynthVoices(index) {
+      if (voices.size <= 16) return;
+      const oldest = [...voices.entries()].find(([key]) => key !== index);
+      if (oldest) { releaseVoice(oldest[1], true); voices.delete(oldest[0]); }
+    }
+
+    function pressNote(index, source) {
+      let sources = holders.get(index);
+      if (!sources) { sources = new Set(); holders.set(index, sources); }
+      if (sources.has(source)) return;
+      const wasHeld = sources.size > 0;
+      sources.add(source);
+      if (!wasHeld) startVoice(index);
+      keyElements.get(index)?.classList.add('is-pressed');
+      updateCount();
+    }
+
+    function releaseNote(index, source) {
+      const sources = holders.get(index);
+      if (!sources || !sources.delete(source)) return;
+      if (sources.size === 0) {
+        holders.delete(index);
+        keyElements.get(index)?.classList.remove('is-pressed');
+        if (sustainEnabled) sustained.add(index);
+        else releaseVoice(voices.get(index));
+      }
+      updateCount();
+    }
+
+    function releaseEverything() {
+      heldPointers.clear();
+      heldKeyboard.clear();
+      holders.clear();
+      sustained.clear();
+      keyElements.forEach(el => el.classList.remove('is-pressed'));
+      voices.forEach(voice => releaseVoice(voice, true));
+      voices.clear();
+      updateCount();
+    }
+
+    function keyMarkup(index, isBlack) {
+      return `<span class="key-label"><span class="key-note">${noteLabel(index)}</span>${isBlack ? '' : `<span class="key-jp">${JP_NAMES[index % 12]}</span>`}<span class="key-pc">${COMPUTER_LABELS[index]}</span></span>`;
+    }
+
+    function makeKey(index, isBlack, leftPercent) {
+      const element = document.createElement('button');
+      element.type = 'button';
+      element.className = `piano-key ${isBlack ? 'black' : 'white'}`;
+      element.dataset.note = String(index);
+      if (index % 12 === 0) element.classList.add('octave-c');
+      element.innerHTML = keyMarkup(index, isBlack);
+      element.setAttribute('aria-label', `${noteLabel(index)}、PCは${COMPUTER_LABELS[index]}キー`);
+      if (isBlack) element.style.left = `${leftPercent}%`;
+      element.addEventListener('pointerdown', event => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        event.preventDefault();
+        const source = `pointer:${event.pointerId}`;
+        if (heldPointers.has(event.pointerId)) return;
+        heldPointers.set(event.pointerId, index);
+        try { element.setPointerCapture(event.pointerId); } catch (_) {}
+        pressNote(index, source);
+      });
+      function endPointer(event) {
+        if (heldPointers.get(event.pointerId) !== index) return;
+        heldPointers.delete(event.pointerId);
+        releaseNote(index, `pointer:${event.pointerId}`);
+      }
+      element.addEventListener('pointerup', endPointer);
+      element.addEventListener('pointercancel', endPointer);
+      element.addEventListener('lostpointercapture', endPointer);
+      element.addEventListener('contextmenu', event => event.preventDefault());
+      keyElements.set(index, element);
+      return element;
+    }
+
+    function renderKeyboard() {
+      whiteRow.replaceChildren();
+      blackRow.replaceChildren();
+      keyElements.clear();
+      for (let octave = 0; octave < OCTAVES; octave++) {
+        for (let position = 0; position < WHITE_STEPS.length; position++) {
+          whiteRow.appendChild(makeKey(octave * 12 + WHITE_STEPS[position], false));
+        }
+      }
+      for (let octave = 0; octave < OCTAVES; octave++) {
+        for (const step of BLACK_STEPS) {
+          const left = ((octave * 7 + WHITE_BEFORE[step] + 1) / WHITE_KEY_COUNT) * 100;
+          blackRow.appendChild(makeKey(octave * 12 + step, true, left));
+        }
+      }
+      rangeLabel.textContent = `${noteLabel(0)} – ${noteLabel(NOTE_COUNT - 1)}`;
+      document.getElementById('oct-down').disabled = octaveOffset <= -36;
+      document.getElementById('oct-up').disabled = octaveOffset >= 12;
+    }
+
+    function shiftOctave(direction) {
+      const value = octaveOffset + direction * 12;
+      if (value < -36 || value > 12) return;
+      releaseEverything();
+      octaveOffset = value;
+      renderKeyboard();
+      prepareSamples();
+    }
+
+    document.getElementById('oct-down').addEventListener('click', () => { shiftOctave(-1); focusKeys(); });
+    document.getElementById('oct-up').addEventListener('click', () => { shiftOctave(1); focusKeys(); });
+    volumeSlider.addEventListener('change', focusKeys);
+    volumeSlider.addEventListener('input', () => {
+      document.getElementById('volume-value').textContent = `${volumeSlider.value}%`;
+      if (masterGain && audioContext) masterGain.gain.setTargetAtTime(Number(volumeSlider.value) / 100 * .54, audioContext.currentTime, .015);
+    });
+    toneSelector.addEventListener('change', () => { releaseEverything(); prepareSamples(true); if(toneSelector.value==='organ') prepareOrganAuto(); setSampleStatus(); focusKeys(); });
+    document.getElementById('pc-enable').addEventListener('click', () => { focusKeys(); ensureAudio(); });
+    sustainButton.addEventListener('click', () => {
+      sustainEnabled = !sustainEnabled;
+      sustainButton.setAttribute('aria-pressed', String(sustainEnabled));
+      sustainButton.textContent = sustainEnabled ? '余韻 ON' : '余韻 OFF';
+      if (!sustainEnabled) {
+        sustained.forEach(index => { if (!holders.has(index)) releaseVoice(voices.get(index)); });
+        sustained.clear();
+      }
+      focusKeys();
+    });
+    document.getElementById('fullscreen').addEventListener('click', async () => {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+          if (screen.orientation?.lock) { try { await screen.orientation.lock('landscape'); } catch (_) {} }
+        } else {
+          statusText.textContent = 'この端末は全画面ボタン非対応';
+        }
+      } catch (_) { statusText.textContent = '端末の設定により全画面にできません'; }
+    });
+    // Capture keyboard events even when a settings button, volume slider or
+    // sound selector has focus. The previous focus filter made the piano silent.
+    window.addEventListener('keydown', event => {
+      if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+      const index = CODE_TO_INDEX.get(event.code);
+      if (index === undefined) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const source = `keyboard:${event.code}`;
+      if (heldKeyboard.has(event.code)) return;
+      heldKeyboard.set(event.code, index);
+      pressNote(index, source);
+    }, true);
+    window.addEventListener('keyup', event => {
+      const index = heldKeyboard.get(event.code);
+      if (index === undefined) return;
+      event.preventDefault();
+      event.stopPropagation();
+      heldKeyboard.delete(event.code);
+      releaseNote(index, `keyboard:${event.code}`);
+    }, true);
+    window.addEventListener('blur', releaseEverything);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) releaseEverything(); });
+    keyboard.addEventListener('dragstart', event => event.preventDefault());
+    renderKeyboard();
+    updateOrganStatus();
+    setSampleStatus();
+    prepareOrganAuto();
+  </script>
+</body>
+</html>
